@@ -103,11 +103,23 @@ if [ "$PAYMENT_PROVIDER" == "tbank" ]; then
     DC="$DC --profile tbank"
 fi
 
+# Registry hiccups are common enough that one dropped layer should not fail a deploy.
+pull_with_retry () {
+    local attempt
+    for attempt in 1 2 3; do
+        $DC pull && return 0
+        echo "Pull failed (attempt $attempt/3), retrying in 10s..."
+        sleep 10
+    done
+    echo "Pull failed after 3 attempts" >&2
+    return 1
+}
+
 # Handle image pulling and restart based on silent mode
 if [ "$SILENT" == true ]; then
     echo "Silent mode enabled. Skipping interactive prompts."
     echo "Pulling Docker images..."
-    $DC pull
+    pull_with_retry
     echo "Images pulled successfully."
     echo "Restarting services..."
     $DC up -d
@@ -118,7 +130,7 @@ else
     case "$pull_images" in
         [Yy]* )
             echo "Pulling Docker images..."
-            $DC pull
+            pull_with_retry
             echo "Images pulled successfully."
             
             read -p "Do you want to restart services with new version? (y/N): " restart
