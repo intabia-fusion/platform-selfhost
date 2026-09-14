@@ -94,6 +94,10 @@ TBANK_MOCK=${TBANK_MOCK}
 # Free tier limits; must match the `free: true` plan in plan-config.yaml
 FREE_PLAN_LIMITS=${FREE_PLAN_LIMITS}
 
+# Webhooks (debug pair): 'true' starts the webhook service together with webhook-mock
+# (UI at /_webhook-mock/, plain-http delivery to it allowed). Leave empty on a public install.
+WEBHOOK_ENABLED=${WEBHOOK_ENABLED}
+
 # Push notification keys for notification service
 PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY}
 PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY}

@@ -82,6 +82,10 @@ if [ "$PAYMENT_PROVIDER" == "tbank" ]; then
     DC="$DC --profile tbank"
 fi
 
+if [ "$WEBHOOK_ENABLED" == "true" ]; then
+    DC="$DC --profile webhook"
+fi
+
 # Registry hiccups are common enough that one dropped layer should not fail a deploy.
 pull_with_retry () {
     local attempt
@@ -125,6 +129,13 @@ if [ ! -f "$CONFIG_DIR/nginx.conf" ]; then
     ./nginx.sh --no-reload 2>/dev/null || echo "Warning: nginx.sh failed"
 fi
 
+# Docker nginx site: .platform.nginx plus the locations of enabled optional services
+if [ "$WEBHOOK_ENABLED" == "true" ]; then
+    sed '/# @webhook/r templates/nginx-webhook.conf' .platform.nginx > "$CONFIG_DIR/platform.nginx"
+else
+    cp .platform.nginx "$CONFIG_DIR/platform.nginx"
+fi
+
 # Start services
 echo "Starting Intabia Platform services..."
 
@@ -134,6 +145,8 @@ if [ "$RECREATE" == true ]; then
 else
     $DC up -d
 fi
+# A running nginx is not recreated when only its site file changed
+$DC exec -T nginx nginx -s reload >/dev/null 2>&1 || true
 
 echo -e "\033[1;32mServices started!\033[0m"
 
@@ -161,6 +174,9 @@ if [ -f "$CONFIG_FILE" ]; then
     echo "  Mailpit: http://${HOST_ADDRESS}:${MAILPIT_HTTP_PORT:-8025}"
     if [ -n "$LIVEKIT_ENABLED" ] && [ "$LIVEKIT_ENABLED" == "true" ]; then
         echo "  LiveKit: Enabled (${LIVEKIT_HOST})"
+    fi
+    if [ "$WEBHOOK_ENABLED" == "true" ]; then
+        echo "  Webhook mock: ${PROTOCOL}://${HOST_ADDRESS}/_webhook-mock/"
     fi
 fi
 

@@ -30,6 +30,8 @@ server {
     #    proxy_set_header X-Forwarded-Proto $scheme;
     #}
 
+    # @webhook: up.sh inserts templates/nginx-webhook.conf here when WEBHOOK_ENABLED=true
+
     location /_payment {
         rewrite ^/_payment(/.*)$ $1 break;
         proxy_pass http://payment:4040/;

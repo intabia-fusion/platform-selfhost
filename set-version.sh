@@ -103,6 +103,17 @@ if [ "$PAYMENT_PROVIDER" == "tbank" ]; then
     DC="$DC --profile tbank"
 fi
 
+if [ "$WEBHOOK_ENABLED" == "true" ]; then
+    DC="$DC --profile webhook"
+fi
+
+# Same nginx site generation as up.sh: compose mounts config/platform.nginx
+if [ "$WEBHOOK_ENABLED" == "true" ]; then
+    sed '/# @webhook/r templates/nginx-webhook.conf' .platform.nginx > config/platform.nginx
+else
+    cp .platform.nginx config/platform.nginx
+fi
+
 # Registry hiccups are common enough that one dropped layer should not fail a deploy.
 pull_with_retry () {
     local attempt
@@ -123,6 +134,7 @@ if [ "$SILENT" == true ]; then
     echo "Images pulled successfully."
     echo "Restarting services..."
     $DC up -d
+    $DC exec -T nginx nginx -s reload >/dev/null 2>&1 || true
     echo "Services restarted."
 else
     # Ask if user wants to pull new images
@@ -138,6 +150,7 @@ else
                 [Yy]* )
                     echo "Restarting services..."
                     $DC up -d
+                    $DC exec -T nginx nginx -s reload >/dev/null 2>&1 || true
                     echo "Services restarted."
                     ;;
                 * )

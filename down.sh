@@ -21,6 +21,10 @@ elif [ "$LIVEKIT_ENABLED" == "true" ]; then
     DC="$DC --profile livekit"
 fi
 
+if [ "$WEBHOOK_ENABLED" == "true" ]; then
+    DC="$DC --profile webhook"
+fi
+
 echo "Stopping Intabia Platform services..."
 $DC down
 echo -e "\033[1;32mServices stopped.\033[0m"
