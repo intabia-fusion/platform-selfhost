@@ -58,5 +58,5 @@ docker run --rm $TTY \
     -e REGION_CONFIG=/var/cfg/region-config.yaml \
     -v "$PWD/config/region-config.yaml":/var/cfg/region-config.yaml:ro \
     ${EXTRA_DOCKER_ARGS[@]+"${EXTRA_DOCKER_ARGS[@]}"} \
-    "intabiafusion/tool:${PLATFORM_VERSION}" \
+    "${IMAGE_PREFIX:-intabiafusion}/tool:${PLATFORM_VERSION}" \
     "${ENTRY[@]}"

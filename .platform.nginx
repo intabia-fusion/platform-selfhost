@@ -32,6 +32,8 @@ server {
 
     # @webhook: up.sh inserts templates/nginx-webhook.conf here when WEBHOOK_ENABLED=true
 
+    # @qa: up.sh inserts templates/nginx-qa.conf here when QA_TOOLS_ENABLED=true
+
     location /_payment {
         rewrite ^/_payment(/.*)$ $1 break;
         proxy_pass http://payment:4040/;

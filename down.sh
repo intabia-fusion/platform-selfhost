@@ -25,6 +25,10 @@ if [ "$WEBHOOK_ENABLED" == "true" ]; then
     DC="$DC --profile webhook"
 fi
 
+if [ "$QA_TOOLS_ENABLED" == "true" ]; then
+    DC="$DC --profile qa"
+fi
+
 echo "Stopping Intabia Platform services..."
 $DC down
 echo -e "\033[1;32mServices stopped.\033[0m"

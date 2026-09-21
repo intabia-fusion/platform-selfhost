@@ -98,6 +98,12 @@ FREE_PLAN_LIMITS=${FREE_PLAN_LIMITS}
 # (UI at /_webhook-mock/, plain-http delivery to it allowed). Leave empty on a public install.
 WEBHOOK_ENABLED=${WEBHOOK_ENABLED}
 
+# QA tools (test stands only): 'true' starts a read-only Dozzle log viewer at /_logs and a stand
+# info page at /_stand/, both behind HTTP basic auth (user qa). Leave empty on a public install.
+QA_TOOLS_ENABLED=${QA_TOOLS_ENABLED}
+# Auto-generated on first enable if left empty; up.sh/set-version.sh persist it here.
+QA_TOOLS_PASSWORD=${QA_TOOLS_PASSWORD}
+
 # Push notification keys for notification service
 PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY}
 PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY}

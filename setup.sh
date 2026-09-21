@@ -751,6 +751,8 @@ export PAYMENT_ALLOW_MOCK=${PAYMENT_ALLOW_MOCK:-true}
 export PAYMENT_SANDBOX=${PAYMENT_SANDBOX:-true}
 export TBANK_MOCK=${TBANK_MOCK:-true}
 export WEBHOOK_ENABLED=${WEBHOOK_ENABLED}
+export QA_TOOLS_ENABLED=${QA_TOOLS_ENABLED}
+export QA_TOOLS_PASSWORD=${QA_TOOLS_PASSWORD}
 # Free tier of a self-hosted install; disk = usersLimit * storagePerUserGB (25 * 40 = 1 TB).
 export FREE_PLAN_LIMITS=${FREE_PLAN_LIMITS:-'{"usersLimit":25,"storagePerUserGB":40,"tokenLimit":1000000000,"windowMonthLimit":1000000000,"trafficLimitGB":0,"meetingMinutesLimit":0}'}
 export STT_MODE=${STT_MODE:-local}

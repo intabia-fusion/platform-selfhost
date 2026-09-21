@@ -107,9 +107,36 @@ if [ "$WEBHOOK_ENABLED" == "true" ]; then
     DC="$DC --profile webhook"
 fi
 
+# config/qa is always bind-mounted into nginx (harmless empty dir when the feature is off); a
+# missing bind-mount source would otherwise make Docker create it as a root-owned directory.
+mkdir -p "$CONFIG_DIR/qa"
+
+# QA tools (Dozzle + stand info page, test stands only): refuse to enable without a password.
+if [ "$QA_TOOLS_ENABLED" == "true" ]; then
+    if [ -z "$QA_TOOLS_PASSWORD" ]; then
+        QA_TOOLS_PASSWORD=$(openssl rand -hex 16)
+        grep -v '^QA_TOOLS_PASSWORD=' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+        echo "QA_TOOLS_PASSWORD=$QA_TOOLS_PASSWORD" >> "$CONFIG_FILE"
+        echo "QA tools password generated (user: qa), see QA_TOOLS_PASSWORD in $CONFIG_FILE"
+    fi
+    if [ -n "$QA_TOOLS_PASSWORD" ]; then
+        echo "qa:$(openssl passwd -apr1 -stdin <<< "$QA_TOOLS_PASSWORD")" > "$CONFIG_DIR/qa/.htpasswd"
+        DC="$DC --profile qa"
+    else
+        echo -e "\033[1;31mWARNING: QA_TOOLS_PASSWORD is empty and openssl could not generate one; QA tools stay disabled.\033[0m"
+        QA_TOOLS_ENABLED=false
+    fi
+fi
+
 # Same nginx site generation as up.sh: compose mounts config/platform.nginx
-if [ "$WEBHOOK_ENABLED" == "true" ]; then
-    sed '/# @webhook/r templates/nginx-webhook.conf' .platform.nginx > config/platform.nginx
+if [ "$QA_TOOLS_ENABLED" == "true" ]; then
+    ./qa-info.sh || echo "Warning: qa-info.sh failed"
+fi
+NGINX_SED_ARGS=()
+[ "$WEBHOOK_ENABLED" == "true" ] && NGINX_SED_ARGS+=(-e '/# @webhook/r templates/nginx-webhook.conf')
+[ "$QA_TOOLS_ENABLED" == "true" ] && NGINX_SED_ARGS+=(-e '/# @qa/r templates/nginx-qa.conf')
+if [ ${#NGINX_SED_ARGS[@]} -gt 0 ]; then
+    sed "${NGINX_SED_ARGS[@]}" .platform.nginx > config/platform.nginx
 else
     cp .platform.nginx config/platform.nginx
 fi
