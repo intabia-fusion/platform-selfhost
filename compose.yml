@@ -244,6 +244,50 @@ services:
     networks:
       - platform_net
 
+  backup:
+    image: ${IMAGE_PREFIX:-intabiafusion}/backup:${PLATFORM_VERSION}
+    depends_on:
+      minio:
+        condition: service_healthy
+      account:
+        condition: service_started
+    environment:
+      - SECRET=${SECRET}
+      - ACCOUNTS_URL=http://account:3000
+      - ACCOUNTS_DB_URL=${CR_DB_URL}
+      - DB_URL=${CR_DB_URL}
+      - STATS_URL=http://stats:4900
+      - QUEUE_CONFIG=redpanda:9092
+      # Same bucket the workspace service archives into, so deleted workspaces get their archive dropped.
+      - BUCKET_NAME=backups
+      - STORAGE=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - WORKSPACE_STORAGE=${STORAGE_CONFIG}
+      # Also the "visited recently" window: workspaces idle longer than this are not backed up.
+      - INTERVAL=86400
+      # Workspaces to back up and deleted archives to drop are rechecked every COOL_DOWN/5 seconds.
+      - COOL_DOWN=3000
+    restart: unless-stopped
+    networks:
+      - platform_net
+
+  backup-api:
+    image: ${IMAGE_PREFIX:-intabiafusion}/backup-api:${PLATFORM_VERSION}
+    depends_on:
+      minio:
+        condition: service_healthy
+      account:
+        condition: service_started
+    environment:
+      - PORT=4039
+      - SECRET=${SECRET}
+      - ACCOUNTS_URL=http://account:3000
+      - STATS_URL=http://stats:4900
+      - BUCKET_NAME=backups
+      - STORAGE=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+    restart: unless-stopped
+    networks:
+      - platform_net
+
   front:
     image: ${IMAGE_PREFIX:-intabiafusion}/front:${PLATFORM_VERSION}
     volumes:
@@ -262,6 +306,7 @@ services:
       - STATS_URL=http://stats:4900
       - STATS_API=http${SECURE:+s}://${HOST_ADDRESS}/_stats
       - UPLOAD_URL=/files
+      - BACKUP_URL=http${SECURE:+s}://${HOST_ADDRESS}/_backup/api/backup
       - ELASTIC_URL=http://elastic:9200
       - COLLABORATOR_URL=ws${SECURE:+s}://${HOST_ADDRESS}/_collaborator
       - STORAGE_CONFIG=${STORAGE_CONFIG}
