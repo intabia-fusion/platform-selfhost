@@ -230,6 +230,10 @@ services:
       - DB_URL=${CR_DB_URL}
       - TRANSACTOR_URL=ws://transactor:3333;ws${SECURE:+s}://${HOST_ADDRESS}/_transactor
       - STORAGE_CONFIG=${STORAGE_CONFIG}
+      # Plain 'all' never picks up deletion, archiving or restore.
+      - WS_OPERATION=all+backup
+      - BACKUP_STORAGE=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - BACKUP_BUCKET=backups
       - MODEL_ENABLED=*
       - ACCOUNTS_URL=http://account:3000
       - STATS_URL=http://stats:4900
