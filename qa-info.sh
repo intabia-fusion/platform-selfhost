@@ -101,6 +101,15 @@ code { background: #f4f4f4; padding: .1rem .3rem; }
 <pre>$PG_INTERNAL_URL</pre>
 <p>From a QA machine:</p>
 $PG_EXTERNAL_BLOCK
+
+<h2>MinIO</h2>
+<table>
+<tr><td>Console</td><td><a href="http://$(esc "$HOST_ADDRESS"):9001">http://$(esc "$HOST_ADDRESS"):9001</a></td></tr>
+<tr><td>S3 API</td><td>http://$(esc "$HOST_ADDRESS"):9000</td></tr>
+<tr><td>User / password</td><td>minioadmin / minioadmin</td></tr>
+<tr><td>Buckets</td><td>blobs (workspace files), backups (backup service and archives), chunks</td></tr>
+</table>
+<p>Published by compose.qa.yml only while QA tools are on.</p>
 </body>
 </html>
 HTML

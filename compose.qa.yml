@@ -1,0 +1,7 @@
+# Overlay for QA stands (QA_TOOLS_ENABLED=true), added by up.sh / set-version.sh.
+# Publishes MinIO API and console on the host with the default minioadmin credentials.
+services:
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"

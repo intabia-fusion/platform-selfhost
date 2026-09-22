@@ -122,6 +122,9 @@ if [ "$QA_TOOLS_ENABLED" == "true" ]; then
     if [ -n "$QA_TOOLS_PASSWORD" ]; then
         echo "qa:$(openssl passwd -apr1 -stdin <<< "$QA_TOOLS_PASSWORD")" > "$CONFIG_DIR/qa/.htpasswd"
         DC="$DC --profile qa"
+        # An explicit -f drops the implicit compose.yml, so name it unless dev mode already did.
+        [[ "$DC" == *" -f "* ]] || DC="$DC -f compose.yml"
+        DC="$DC -f compose.qa.yml"
     else
         echo -e "\033[1;31mWARNING: QA_TOOLS_PASSWORD is empty and openssl could not generate one; QA tools stay disabled.\033[0m"
         QA_TOOLS_ENABLED=false
