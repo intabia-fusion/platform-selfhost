@@ -405,21 +405,22 @@ OpenAI-совместимым сервером, поэтому локальны�
 `--stt` принимает `local`, `openai` (оба - OpenAI-совместимые endpoint'ы
 `/v1/audio/transcriptions`) или `none` для отключения транскрибации.
 
-Сервер транскрибации **не входит** в `compose.yml` - запускайте его сами: обычно он требует GPU
-и имеет собственный жизненный цикл. Готовый вариант с поддержкой русского языка - `oaitt`:
+Сервер транскрибации можно поднять вместе со стендом: поставьте `OAITT_ENABLED=true` в
+`config/platform.conf`, и `./up.sh` запустит его (профиль compose `stt`, сервис `oaitt`).
+Значение `STT_URL` по умолчанию уже указывает на него.
+
+Если нужен отдельный запуск - на другой машине или со своим жизненным циклом:
 
 ```bash
 docker run -d --name oaitt --restart unless-stopped \
   -p 9007:9007 \
-  -e PORT=9007 \
-  -e ASR_ENGINE=gigaam \
-  -e DEVICE=cpu \
-  -e GIGAAM_MODEL=v3_e2e_ctc \
-  intabiafusion/oaitt:v1.0.0
+  intabiafusion/oaitt-onnx:1.0.0
 ```
 
-> Образ `oaitt` опубликован только для `linux/amd64`; на Apple Silicon добавьте `--platform linux/amd64`
-> (работает через эмуляцию и медленно). На хосте с GPU используйте `DEVICE=cuda`.
+> GigaAM v3 на ONNX Runtime, только CPU - GPU не нужен. Веса запечены в образ, сеть на
+> рантайме не требуется. Опубликован для `linux/amd64` и `linux/arm64`.
+> Прежний `intabiafusion/oaitt:v1.0.0` (PyTorch, только amd64) тоже работает, но медленнее
+> и заметно тяжелее.
 
 Затем укажите его платформе:
 

@@ -93,6 +93,10 @@ elif [ "$LIVEKIT_ENABLED" == "true" ]; then
     DC="$DC --profile livekit"
 fi
 
+if [ "${OAITT_ENABLED:-}" == "true" ]; then
+    DC="$DC --profile stt"
+fi
+
 # Build down flags
 DOWN_FLAGS=""
 if [ "$REMOVE_VOLUMES" == true ]; then

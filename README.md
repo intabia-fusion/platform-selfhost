@@ -404,21 +404,22 @@ be edited by hand - lower `maxContextTokens` / `maxOutputTokens` for a small loc
 `--stt` accepts `local`, `openai` (both are OpenAI-compatible `/v1/audio/transcriptions`
 endpoints) or `none` to disable transcription.
 
-The transcription server is **not** part of `compose.yml` - run it yourself, it is usually
-GPU-bound and has its own lifecycle. A ready-made Russian-capable option is `oaitt`:
+The transcription server can run as part of the stack: set `OAITT_ENABLED=true` in
+`config/platform.conf` and `./up.sh` starts it (compose profile `stt`, service `oaitt`).
+The default `STT_URL` already points at it.
+
+To run it separately instead - on another host, or with its own lifecycle:
 
 ```bash
 docker run -d --name oaitt --restart unless-stopped \
   -p 9007:9007 \
-  -e PORT=9007 \
-  -e ASR_ENGINE=gigaam \
-  -e DEVICE=cpu \
-  -e GIGAAM_MODEL=v3_e2e_ctc \
-  intabiafusion/oaitt:v1.0.0
+  intabiafusion/oaitt-onnx:1.0.0
 ```
 
-> The `oaitt` image is published for `linux/amd64` only; on Apple Silicon add `--platform linux/amd64`
-> (runs under emulation and is slow). Use `DEVICE=cuda` on a GPU host.
+> GigaAM v3 on ONNX Runtime, CPU only - no GPU needed. The weights are baked into the image,
+> so it needs no network at runtime. Published for `linux/amd64` and `linux/arm64`.
+> The older `intabiafusion/oaitt:v1.0.0` (PyTorch, amd64 only) still works but is slower
+> and much larger.
 
 Then point the platform at it:
 

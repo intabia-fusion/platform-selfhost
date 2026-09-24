@@ -855,6 +855,20 @@ services:
     networks:
       - platform_net
 
+  # Transcription server for the AI bot (profile stt, started by up.sh when OAITT_ENABLED=true).
+  # GigaAM v3 on ONNX Runtime: CPU only, weights baked into the image, no network at runtime.
+  # The port is published so the default STT_URL (host.docker.internal:9007) keeps working
+  # whether the server runs here or on the host.
+  oaitt:
+    image: ${IMAGE_PREFIX:-intabiafusion}/oaitt-onnx:${OAITT_VERSION:-1.0.0}
+    profiles:
+      - stt
+    ports:
+      - 9007:9007
+    restart: unless-stopped
+    networks:
+      - platform_net
+
   # API keys + incoming/outgoing webhooks, paired with webhook-mock for debugging (profile webhook,
   # started by up.sh when WEBHOOK_ENABLED=true). Retries are scheduled through time-machine.
   webhook:

@@ -40,6 +40,7 @@ elif [ "${LIVEKIT_ENABLED:-}" == "true" ]; then
 fi
 [ "${PAYMENT_PROVIDER:-}" == "tbank" ] && DC="$DC --profile tbank"
 [ "${WEBHOOK_ENABLED:-}" == "true" ] && DC="$DC --profile webhook"
+[ "${OAITT_ENABLED:-}" == "true" ] && DC="$DC --profile stt"
 DC="$DC --profile qa"
 SERVICES=$($DC config --services 2>/dev/null | sort | tr '\n' ' ') || SERVICES=""
 

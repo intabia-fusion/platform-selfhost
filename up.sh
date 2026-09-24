@@ -86,6 +86,10 @@ if [ "$WEBHOOK_ENABLED" == "true" ]; then
     DC="$DC --profile webhook"
 fi
 
+if [ "${OAITT_ENABLED:-}" == "true" ]; then
+    DC="$DC --profile stt"
+fi
+
 # config/qa is always bind-mounted into nginx (harmless empty dir when the feature is off); a
 # missing bind-mount source would otherwise make Docker create it as a root-owned directory.
 mkdir -p "$CONFIG_DIR/qa"

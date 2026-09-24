@@ -25,6 +25,10 @@ if [ "$WEBHOOK_ENABLED" == "true" ]; then
     DC="$DC --profile webhook"
 fi
 
+if [ "${OAITT_ENABLED:-}" == "true" ]; then
+    DC="$DC --profile stt"
+fi
+
 if [ "$QA_TOOLS_ENABLED" == "true" ]; then
     DC="$DC --profile qa"
 fi
