@@ -89,8 +89,9 @@ services:
       - platform_net
 
   minio:
-    # Docker Hub dropped the minio/minio repo; quay is upstream's registry now.
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # Upstream minio images went private on both Docker Hub and quay; silo is a MinIO fork
+    # that reads the same data directory and ships `mc` for the healthcheck.
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
     command: server /data --address ":9000" --console-address ":9001"
     volumes:
       - ${VOLUME_FILES_PATH:-files}:/data
