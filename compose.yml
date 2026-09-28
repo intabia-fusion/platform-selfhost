@@ -766,6 +766,8 @@ services:
       - SMTP_PORT=1025
       - SMTP_TLS_MODE=ignore
       - SMTP_ALLOW_SELF_SIGNED=true
+      - ACCOUNTS_URL=http://account:3000
+      - SECRET=${SECRET}
     restart: unless-stopped
     networks:
       - platform_net
@@ -987,12 +989,18 @@ services:
   notification:
     image: ${IMAGE_PREFIX:-intabiafusion}/notification:${PLATFORM_VERSION}
     environment:
-      - PORT=3335
       - SOURCE=mail@example.com
       - ACCESS_KEY=none
       - SECRET_KEY=none
       - PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY:-}
       - PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY:-}
+      - SECRET=${SECRET}
+      - ACCOUNTS_URL=http://account:3000
+      - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=
+    depends_on:
+      - redpanda
+      - account
     restart: unless-stopped
     networks:
       - platform_net
