@@ -504,13 +504,65 @@ containers, and a static page with the stand configuration. Off by default:
   Postgres connection details (host, port, user, database, password).
 
 Both locations require HTTP basic auth, user `qa`. The password comes from `QA_TOOLS_PASSWORD` in
-`config/platform.conf`; if left empty, `up.sh` generates one on first enable and prints it once -
-after that, read it from `config/platform.conf`.
+`config/platform.conf`; if left empty, `up.sh` sets it to `qa123` on first enable.
+
+The platform version can be switched from the browser at `http://<host>/_stand/version/` (linked
+from the stand info page). The page talks to `stand-control.mjs`, which runs on the host and calls
+`./set-version.sh --silent <version>` after checking that the image tag exists. Start it from the
+repo root as a user that can run docker (Node 20+, no dependencies):
+
+```bash
+nohup node stand-control.mjs > config/qa/stand-control.log 2>&1 &
+```
+
+It listens on port 4090 (`STAND_CONTROL_PORT`) on all interfaces and checks the same `qa` basic auth
+itself; nginx reaches it through `host.docker.internal`. The run log is kept in
+`config/qa/set-version.log`. Anyone with the QA password can restart the stand with any published
+version, so close port 4090 to the outside with a firewall.
 
 The Docker socket gives the Dozzle container root-equivalent control of the host even though it is
 mounted read-only, container logs can contain tokens and personal data, and the info page shows
 database credentials. This profile is for test stands only, and both locations are always behind
 basic auth - never enable it on a public install.
+
+### Backups
+
+The `backup` and `backup-api` services, workspace archiving in the workspace service
+(`WS_OPERATION=all+backup`) and the `/_backup` location are on by default. To turn them off:
+
+```bash
+./setup.sh --env BACKUP_ENABLED=
+./up.sh --recreate
+```
+
+`./up.sh` then skips the compose profile `backup`, the workspace service runs with `WS_OPERATION=all`
+and the front gets an empty `BACKUP_URL`. Without archiving the workspace service does not process
+deletion, archiving or restore. Any non-empty value turns backups on, so use `true` or leave it empty.
+
+### Region
+
+`REGION` is the region of the workspaces this stand serves; empty means the default region. The
+workspace service creates and upgrades only workspaces whose `workspace.region` in the account DB
+equals `REGION`, and every service uses it as `QUEUE_REGION`. With `REGION` set, `setup.sh` adds the
+region to `config/region-config.yaml` and leaves the default region unnamed, so the create-workspace
+form offers only `REGION`.
+
+```bash
+./setup.sh --env REGION=pg
+./up.sh --recreate
+```
+
+Moving existing workspaces to another region needs an update of `workspace.region` in the account DB.
+
+### Storage and transactor options
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin` | MinIO root credentials, used by every service that talks to MinIO |
+| `DATALAKE_LOCATION` | `eu` | Datalake bucket location; stored with every blob, never change it on an existing install |
+| `POSTGRES_SHM_SIZE` | `64m` | Shared memory of the postgres container |
+| `ENABLE_COMPRESSION` | `true` | Transactor websocket compression |
+| `PLATFORM_ADMIN_EMAILS` | empty | Comma-separated emails of platform admins |
 
 ### Google Calendar
 

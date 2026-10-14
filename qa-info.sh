@@ -41,6 +41,7 @@ fi
 [ "${PAYMENT_PROVIDER:-}" == "tbank" ] && DC="$DC --profile tbank"
 [ "${WEBHOOK_ENABLED:-}" == "true" ] && DC="$DC --profile webhook"
 [ "${OAITT_ENABLED:-}" == "true" ] && DC="$DC --profile stt"
+[ "${BACKUP_ENABLED:-}" == "true" ] && DC="$DC --profile backup"
 DC="$DC --profile qa"
 SERVICES=$($DC config --services 2>/dev/null | sort | tr '\n' ' ') || SERVICES=""
 
@@ -78,7 +79,7 @@ code { background: #f4f4f4; padding: .1rem .3rem; }
 
 <h2>Platform</h2>
 <table>
-<tr><td>Version</td><td>$(esc "${PLATFORM_VERSION:-}")</td></tr>
+<tr><td>Version</td><td>$(esc "${PLATFORM_VERSION:-}") (<a href="/_stand/version/">change</a>)</td></tr>
 <tr><td>URL</td><td><a href="$(esc "$FRONT_URL")">$(esc "$FRONT_URL")</a></td></tr>
 <tr><td>Image registry</td><td>$(esc "${IMAGE_PREFIX:-intabiafusion}")</td></tr>
 <tr><td>SSL</td><td>$([ -n "${SECURE:-}" ] && echo on || echo off)</td></tr>
@@ -107,7 +108,7 @@ $PG_EXTERNAL_BLOCK
 <table>
 <tr><td>Console</td><td><a href="http://$(esc "$HOST_ADDRESS"):9001">http://$(esc "$HOST_ADDRESS"):9001</a></td></tr>
 <tr><td>S3 API</td><td>http://$(esc "$HOST_ADDRESS"):9000</td></tr>
-<tr><td>User / password</td><td>minioadmin / minioadmin</td></tr>
+<tr><td>User / password</td><td>$(esc "${MINIO_ACCESS_KEY:-minioadmin}") / $(esc "${MINIO_SECRET_KEY:-minioadmin}")</td></tr>
 <tr><td>Buckets</td><td>blobs (workspace files), backups (backup service and archives), chunks</td></tr>
 </table>
 <p>Published by compose.qa.yml only while QA tools are on.</p>

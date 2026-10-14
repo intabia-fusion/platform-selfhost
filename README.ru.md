@@ -465,6 +465,46 @@ TBANK_MOCK=true
 токены попадают на отдельный баланс: он не сгорает в конце тарифного окна и тратится раньше
 квоты тарифа.
 
+### Бэкапы
+
+Сервисы `backup` и `backup-api`, архивирование в workspace-сервисе (`WS_OPERATION=all+backup`) и
+location `/_backup` включены по умолчанию. Выключить:
+
+```bash
+./setup.sh --env BACKUP_ENABLED=
+./up.sh --recreate
+```
+
+`./up.sh` тогда не поднимает профиль compose `backup`, workspace-сервис работает с
+`WS_OPERATION=all`, front получает пустой `BACKUP_URL`. Без архивирования workspace-сервис не
+обрабатывает удаление, архивирование и восстановление пространств. Любое непустое значение включает
+бэкапы, поэтому пишите `true` или оставляйте пустым.
+
+### Регион
+
+`REGION` - регион пространств, которые обслуживает стенд; пусто - регион по умолчанию.
+Workspace-сервис создаёт и обновляет только пространства, у которых `workspace.region` в account DB
+равен `REGION`, а все сервисы получают его как `QUEUE_REGION`. При заданном `REGION` `setup.sh`
+добавляет регион в `config/region-config.yaml` и оставляет регион по умолчанию без имени, поэтому
+форма создания пространства предлагает только `REGION`.
+
+```bash
+./setup.sh --env REGION=pg
+./up.sh --recreate
+```
+
+Перенос существующих пространств в другой регион - это обновление `workspace.region` в account DB.
+
+### Хранилище и transactor
+
+| Переменная | По умолчанию | Назначение |
+|---|---|---|
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin` | Учётные данные MinIO, их используют все сервисы, работающие с MinIO |
+| `DATALAKE_LOCATION` | `eu` | Location бакета datalake; хранится у каждого блоба, на существующей установке не менять |
+| `POSTGRES_SHM_SIZE` | `64m` | Shared memory контейнера postgres |
+| `ENABLE_COMPRESSION` | `true` | Сжатие websocket в transactor |
+| `PLATFORM_ADMIN_EMAILS` | пусто | Email администраторов платформы через запятую |
+
 ### Google Calendar
 
 См. [руководство по настройке Gmail](guides/gmail-configuration.md).

@@ -27,11 +27,15 @@ services:
       dozzle:
         condition: service_started
         required: false
+    # stand-control.mjs (QA version switch) listens on the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - platform_net
 
   postgres:
     image: postgres:18.1
+    shm_size: ${POSTGRES_SHM_SIZE:-64m}
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -93,6 +97,9 @@ services:
     # that reads the same data directory and ships `mc` for the healthcheck.
     image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
     command: server /data --address ":9000" --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - ${VOLUME_FILES_PATH:-files}:/data
     healthcheck:
@@ -171,6 +178,8 @@ services:
       - STATS_URL=http://stats:4900
       - LAST_NAME_FIRST=${LAST_NAME_FIRST:-true}
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
+      - ENABLE_COMPRESSION=${ENABLE_COMPRESSION:-true}
       - AI_BOT_URL=http://aibot:4011
       - MAIL_URL=http://mail_server:8097
       - MAIL_AUTH_TOKEN=main_secret
@@ -213,6 +222,7 @@ services:
       - ACCOUNTS_URL=http${SECURE:+s}://${HOST_ADDRESS}/_accounts
       - ACCOUNT_PORT=3000
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
       - MAIL_URL=http://mail_server:8097
       # Free tier limits, must match the `free: true` plan in plan-config.yaml.
       # Applied to every workspace without an active paid subscription.
@@ -232,21 +242,28 @@ services:
       - TRANSACTOR_URL=ws://transactor:3333;ws${SECURE:+s}://${HOST_ADDRESS}/_transactor
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       # Plain 'all' never picks up deletion, archiving or restore.
-      - WS_OPERATION=all+backup
-      - BACKUP_STORAGE=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      # all+backup when BACKUP_ENABLED is non-empty, plain all otherwise.
+      - WS_OPERATION=all${BACKUP_ENABLED:++backup}
+      - BACKUP_STORAGE=minio|minio?accessKey=${MINIO_ACCESS_KEY:-minioadmin}&secretKey=${MINIO_SECRET_KEY:-minioadmin}
       - BACKUP_BUCKET=backups
       - MODEL_ENABLED=*
       - ACCOUNTS_URL=http://account:3000
       - STATS_URL=http://stats:4900
       - QUEUE_CONFIG=redpanda:9092
+      # Only workspaces of this region are created and upgraded; it must match workspace.region in the account DB.
+      - REGION=${REGION:-}
+      - QUEUE_REGION=${REGION:-}
       - ACCOUNTS_DB_URL=${CR_DB_URL}
       - MAIL_URL=http://mail_server:8097
     restart: unless-stopped
     networks:
       - platform_net
 
+  # Backup pair (profile backup, started by up.sh when BACKUP_ENABLED=true).
   backup:
     image: ${IMAGE_PREFIX:-intabiafusion}/backup:${PLATFORM_VERSION}
+    profiles:
+      - backup
     depends_on:
       minio:
         condition: service_healthy
@@ -259,9 +276,10 @@ services:
       - DB_URL=${CR_DB_URL}
       - STATS_URL=http://stats:4900
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
       # Same bucket the workspace service archives into, so deleted workspaces get their archive dropped.
       - BUCKET_NAME=backups
-      - STORAGE=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - STORAGE=minio|minio?accessKey=${MINIO_ACCESS_KEY:-minioadmin}&secretKey=${MINIO_SECRET_KEY:-minioadmin}
       - WORKSPACE_STORAGE=${STORAGE_CONFIG}
       # Also the "visited recently" window: workspaces idle longer than this are not backed up.
       - INTERVAL=86400
@@ -273,6 +291,8 @@ services:
 
   backup-api:
     image: ${IMAGE_PREFIX:-intabiafusion}/backup-api:${PLATFORM_VERSION}
+    profiles:
+      - backup
     depends_on:
       minio:
         condition: service_healthy
@@ -284,7 +304,7 @@ services:
       - ACCOUNTS_URL=http://account:3000
       - STATS_URL=http://stats:4900
       - BUCKET_NAME=backups
-      - STORAGE=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - STORAGE=minio|minio?accessKey=${MINIO_ACCESS_KEY:-minioadmin}&secretKey=${MINIO_SECRET_KEY:-minioadmin}
     restart: unless-stopped
     networks:
       - platform_net
@@ -307,7 +327,7 @@ services:
       - STATS_URL=http://stats:4900
       - STATS_API=http${SECURE:+s}://${HOST_ADDRESS}/_stats
       - UPLOAD_URL=/files
-      - BACKUP_URL=http${SECURE:+s}://${HOST_ADDRESS}/_backup/api/backup
+      - BACKUP_URL=${BACKUP_ENABLED:+http${SECURE:+s}://${HOST_ADDRESS}/_backup/api/backup}
       - ELASTIC_URL=http://elastic:9200
       - COLLABORATOR_URL=ws${SECURE:+s}://${HOST_ADDRESS}/_collaborator
       - STORAGE_CONFIG=${STORAGE_CONFIG}
@@ -351,8 +371,10 @@ services:
       - ACCOUNTS_URL=http://account:3000
       - STATS_URL=http://stats:4900
       - DB_URL=${CR_DB_URL}
-      - BUCKETS=blobs,eu|http://minio:9000?accessKey=minioadmin&secretKey=minioadmin
+      # The location is stored with every blob, so it must not change on an existing install.
+      - BUCKETS=blobs,${DATALAKE_LOCATION:-eu}|http://minio:9000?accessKey=${MINIO_ACCESS_KEY:-minioadmin}&secretKey=${MINIO_SECRET_KEY:-minioadmin}
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
       # - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
     restart: unless-stopped
     networks:
@@ -369,6 +391,7 @@ services:
       - ACCOUNTS_URL=http://account:3000
       - STATS_URL=http://stats:4900
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
     restart: unless-stopped
     networks:
       - platform_net
@@ -396,6 +419,7 @@ services:
         condition: service_started
     environment:
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
       - SERVER_SECRET=${SECRET}
       - STATS_URL=http://stats:4900
       - DB_URL=${CR_DB_URL}
@@ -426,6 +450,7 @@ services:
       - SECRET=secret
       - ACCOUNTS_URL=http://account:3000
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
     restart: unless-stopped
     networks:
       - platform_net
@@ -448,7 +473,7 @@ services:
       - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
       - PLAN_CONFIG=/var/cfg/plan-config.yaml
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
       # PAYMENT_PROVIDER: mock (plans activate instantly, no bank), tbank (route to
       # tbank-subscriptions), polar, stripe.
       - PROVIDER=${PAYMENT_PROVIDER:-mock}
@@ -485,7 +510,7 @@ services:
       - ACCOUNTS_URL=http://account:3000
       - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
       # Source of plan prices and localized plan labels for emails
       - PAYMENT_URL=http://payment:4040
       # In-process mock bank: no terminal credentials, self-fired CONFIRMED webhook
@@ -520,8 +545,8 @@ services:
       - STREAM_BASE_URL=http${SECURE:+s}://${HOST_ADDRESS}/_stream
       - STREAM_MAX_PARALLEL_SCALING_COUNT=2
       - STREAM_LOG_LEVEL=debug
-      - AWS_ACCESS_KEY_ID=minioadmin
-      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY:-minioadmin}
       - STREAM_QUEUE_CONFIG=redpanda:9092
     ports:
       - 1081:1081
@@ -536,6 +561,7 @@ services:
       - ACCOUNTS_URL=http://account:3000
       - SECRET=${SECRET}
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
     restart: unless-stopped
     networks:
       - platform_net
@@ -564,9 +590,9 @@ services:
       - ACCOUNTS_URL=http://account:3000
       - DB_URL=${CR_DB_URL}
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - S3_STORAGE_CONFIG=s3|http://minio:9000?accessKey=minioadmin&secretKey=minioadmin&rootBucket=love-recordings
+      - S3_STORAGE_CONFIG=s3|http://minio:9000?accessKey=${MINIO_ACCESS_KEY:-minioadmin}&secretKey=${MINIO_SECRET_KEY:-minioadmin}&rootBucket=love-recordings
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
       - STATS_URL=http://stats:4900
       - LIVEKIT_HOST=ws://host.docker.internal:7880
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
@@ -604,9 +630,10 @@ services:
       - PORT=4011
       - SERVER_SECRET=${SECRET}
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
       - ACCOUNTS_URL=http://account:3000
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - CHUNK_STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin&rootBucket=chunks
+      - CHUNK_STORAGE_CONFIG=minio|minio?accessKey=${MINIO_ACCESS_KEY:-minioadmin}&secretKey=${MINIO_SECRET_KEY:-minioadmin}&rootBucket=chunks
       - FIRST_NAME=Юля
       - LAST_NAME=AI
       - PASSWORD=password
@@ -678,6 +705,7 @@ services:
     environment:
       - PORT=4042
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
       - SECRET=${SECRET}
       - ACCOUNTS_URL=http://account:3000
       - DB_URL=${CR_DB_URL}
@@ -717,7 +745,7 @@ services:
       - DB_URL=${CR_DB_URL}
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
       - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
       - STATS_URL=http://stats:4900
     restart: unless-stopped
@@ -756,7 +784,9 @@ services:
       - MODE=queue
       - SOURCE=hello@localhost
       - REPLY_TO=hello@localhost
+      - APP_NAME=${TITLE:-Intabia Platform}
       - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=${REGION:-}
       - PORT=8097
       - REGION=
       - API_KEY=main_secret
@@ -853,7 +883,7 @@ services:
     environment:
       - DB_URL=${CR_DB_URL}
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
     restart: unless-stopped
     networks:
       - platform_net
@@ -888,7 +918,7 @@ services:
       - SECRET=${SECRET}
       - ACCOUNTS_URL=http://account:3000
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
       - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
       # Lets outgoing deliveries reach webhook-mock over plain http.
       # Cluster-internal names stay blocked regardless; never enable on a public install.
@@ -977,7 +1007,7 @@ services:
       - SECRET=${SECRET}
       - ACCOUNTS_URL=http://account:3000
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
       - DB_URL=${CR_DB_URL}
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - APPLY_TX_BATCH_SIZE=100
@@ -997,7 +1027,7 @@ services:
       - SECRET=${SECRET}
       - ACCOUNTS_URL=http://account:3000
       - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
+      - QUEUE_REGION=${REGION:-}
     depends_on:
       - redpanda
       - account

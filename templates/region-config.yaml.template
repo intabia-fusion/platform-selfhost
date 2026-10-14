@@ -3,7 +3,7 @@
 
 regions:
   '':
-    name: Default
+    name: ${DEFAULT_REGION_NAME}
     transactors:
       - external: ${WS_PROTOCOL}://${HOST_ADDRESS}/_transactor
         internal: ws://transactor:3333

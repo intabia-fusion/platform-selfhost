@@ -34,6 +34,8 @@ server {
 
     # @qa: up.sh inserts templates/nginx-qa.conf here when QA_TOOLS_ENABLED=true
 
+    # @backup: up.sh inserts templates/nginx-backup.conf here when BACKUP_ENABLED=true
+
     location /_payment {
         rewrite ^/_payment(/.*)$ $1 break;
         proxy_pass http://payment:4040/;
@@ -182,16 +184,6 @@ server {
 
         rewrite ^/_datalake(/.*)$ $1 break;
         proxy_pass http://datalake:4031/;
-    }
-
-    location /_backup {
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        rewrite ^/_backup(/.*)$ $1 break;
-        proxy_pass http://backup-api:4039/;
     }
 
     #location /_github {

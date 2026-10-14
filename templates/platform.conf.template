@@ -28,6 +28,28 @@ POSTGRES_DB=${POSTGRES_DB}
 POSTGRES_USER=${POSTGRES_USER}
 POSTGRES_PASSWORD=${POSTGRES_SECRET}
 CR_DB_URL=postgres://${POSTGRES_USER}:${POSTGRES_SECRET}@postgres:5432/${POSTGRES_DB}
+# Shared memory of the postgres container (Docker default 64m); raise it for parallel queries on large data.
+POSTGRES_SHM_SIZE=${POSTGRES_SHM_SIZE}
+
+# MinIO credentials used by minio itself and by every service that talks to it.
+MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+# Datalake bucket location; it is stored with every blob, so never change it on an existing install.
+DATALAKE_LOCATION=${DATALAKE_LOCATION}
+
+# Region of the workspaces this stand serves (empty = default region). Must match workspace.region
+# in the account DB: the workspace service creates and upgrades only workspaces of this region.
+REGION=${REGION}
+
+# 'true' runs the backup and backup-api services, archiving in the workspace service and /_backup.
+# Leave empty to disable backups.
+BACKUP_ENABLED=${BACKUP_ENABLED}
+
+# Transactor websocket compression: 'true' or 'false'.
+ENABLE_COMPRESSION=${ENABLE_COMPRESSION}
+
+# Comma-separated emails of platform admins.
+PLATFORM_ADMIN_EMAILS=${PLATFORM_ADMIN_EMAILS}
 
 # Redpanda variables
 REDPANDA_ADMIN_USER=${REDPANDA_ADMIN_USER}
@@ -101,7 +123,7 @@ WEBHOOK_ENABLED=${WEBHOOK_ENABLED}
 # QA tools (test stands only): 'true' starts a read-only Dozzle log viewer at /_logs and a stand
 # info page at /_stand/, both behind HTTP basic auth (user qa). Leave empty on a public install.
 QA_TOOLS_ENABLED=${QA_TOOLS_ENABLED}
-# Auto-generated on first enable if left empty; up.sh/set-version.sh persist it here.
+# Set to qa123 on first enable if left empty; up.sh/set-version.sh persist it here.
 QA_TOOLS_PASSWORD=${QA_TOOLS_PASSWORD}
 
 # Push notification keys for notification service

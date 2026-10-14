@@ -722,6 +722,15 @@ export DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE:-ru}
 export LAST_NAME_FIRST=${LAST_NAME_FIRST:-true}
 export POSTGRES_DB=${POSTGRES_DB:-platform}
 export POSTGRES_USER=${POSTGRES_USER:-platform}
+export POSTGRES_SHM_SIZE=${POSTGRES_SHM_SIZE:-64m}
+export MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+export MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+export DATALAKE_LOCATION=${DATALAKE_LOCATION:-eu}
+export REGION=${REGION}
+# Unset means a fresh install or a config from before the option: backups on. Empty stays off.
+export BACKUP_ENABLED=${BACKUP_ENABLED-true}
+export ENABLE_COMPRESSION=${ENABLE_COMPRESSION:-true}
+export PLATFORM_ADMIN_EMAILS=${PLATFORM_ADMIN_EMAILS}
 export REDPANDA_ADMIN_USER=${REDPANDA_ADMIN_USER:-superadmin}
 export DOCKER_NAME=${DOCKER_NAME:-platform}
 export MAILPIT_HTTP_PORT=${MAILPIT_HTTP_PORT:-8025}
@@ -865,7 +874,26 @@ if [[ -f templates/branding.json.template ]]; then
 fi
 
 if [[ -f templates/region-config.yaml.template ]]; then
+    # With REGION set the default region stays as an unnamed fallback, so the create-workspace form
+    # offers only REGION - the one the workspace service serves.
+    if [[ -n "$REGION" ]]; then
+        export DEFAULT_REGION_NAME=""
+    else
+        export DEFAULT_REGION_NAME="Default"
+    fi
     envsubst < templates/region-config.yaml.template > "$CONFIG_DIR/region-config.yaml"
+    if [[ -n "$REGION" ]]; then
+        cat >> "$CONFIG_DIR/region-config.yaml" <<RGEOF
+  '${REGION}':
+    name: ${REGION}
+    transactors:
+      - external: ${WS_PROTOCOL}://${HOST_ADDRESS}/_transactor
+        internal: ws://transactor:3333
+    collaborators:
+      - external: ${WS_PROTOCOL}://${HOST_ADDRESS}/_collaborator
+        internal: ws://collaborator:3078
+RGEOF
+    fi
     echo "Region configuration updated."
 fi
 

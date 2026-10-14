@@ -107,6 +107,15 @@ if [ "$WEBHOOK_ENABLED" == "true" ]; then
     DC="$DC --profile webhook"
 fi
 
+# Configs written before BACKUP_ENABLED existed had backups always on.
+if [ -f "$CONFIG_FILE" ] && ! grep -q '^BACKUP_ENABLED=' "$CONFIG_FILE"; then
+    echo "BACKUP_ENABLED=true" >> "$CONFIG_FILE"
+    BACKUP_ENABLED=true
+fi
+if [ "$BACKUP_ENABLED" == "true" ]; then
+    DC="$DC --profile backup"
+fi
+
 # config/qa is always bind-mounted into nginx (harmless empty dir when the feature is off); a
 # missing bind-mount source would otherwise make Docker create it as a root-owned directory.
 mkdir -p "$CONFIG_DIR/qa"
@@ -114,10 +123,10 @@ mkdir -p "$CONFIG_DIR/qa"
 # QA tools (Dozzle + stand info page, test stands only): refuse to enable without a password.
 if [ "$QA_TOOLS_ENABLED" == "true" ]; then
     if [ -z "$QA_TOOLS_PASSWORD" ]; then
-        QA_TOOLS_PASSWORD=$(openssl rand -hex 16)
+        QA_TOOLS_PASSWORD=qa123
         grep -v '^QA_TOOLS_PASSWORD=' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
         echo "QA_TOOLS_PASSWORD=$QA_TOOLS_PASSWORD" >> "$CONFIG_FILE"
-        echo "QA tools password generated (user: qa), see QA_TOOLS_PASSWORD in $CONFIG_FILE"
+        echo "QA tools password set to the default qa123 (user: qa), change QA_TOOLS_PASSWORD in $CONFIG_FILE"
     fi
     if [ -n "$QA_TOOLS_PASSWORD" ]; then
         echo "qa:$(openssl passwd -apr1 -stdin <<< "$QA_TOOLS_PASSWORD")" > "$CONFIG_DIR/qa/.htpasswd"
@@ -138,6 +147,7 @@ fi
 NGINX_SED_ARGS=()
 [ "$WEBHOOK_ENABLED" == "true" ] && NGINX_SED_ARGS+=(-e '/# @webhook/r templates/nginx-webhook.conf')
 [ "$QA_TOOLS_ENABLED" == "true" ] && NGINX_SED_ARGS+=(-e '/# @qa/r templates/nginx-qa.conf')
+[ "$BACKUP_ENABLED" == "true" ] && NGINX_SED_ARGS+=(-e '/# @backup/r templates/nginx-backup.conf')
 if [ ${#NGINX_SED_ARGS[@]} -gt 0 ]; then
     sed "${NGINX_SED_ARGS[@]}" .platform.nginx > config/platform.nginx
 else
